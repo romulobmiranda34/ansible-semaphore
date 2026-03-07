@@ -21,15 +21,15 @@ locals {
 #      os_type        = "Linux"
 #    }
 
-    ubuntu = {
-      name           = "vm-ubuntu-lab"
-      publisher      = "Canonical"
-      offer          = "ubuntu-24_04-lts"
-      sku            = "server-gen1"
-      version        = "latest"
-      vm_size        = var.vm_size_linux
-      os_type        = "Linux"
-    }
+#    ubuntu = {
+#      name           = "vm-ubuntu-lab"
+#      publisher      = "Canonical"
+#      offer          = "ubuntu-24_04-lts"
+#      sku            = "server-gen1"
+#      version        = "latest"
+#      vm_size        = var.vm_size_linux
+#      os_type        = "Linux"
+#    }
   }
 }
 

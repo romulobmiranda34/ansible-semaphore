@@ -3,7 +3,7 @@ output "vm_private_ips" {
   value = {
     redhat               = azurerm_network_interface.vms["redhat"].private_ip_address
 #    suse                 = azurerm_network_interface.vms["suse"].private_ip_address
-    ubuntu               = azurerm_network_interface.vms["ubuntu"].private_ip_address
+#    ubuntu               = azurerm_network_interface.vms["ubuntu"].private_ip_address
   }
 }
 
@@ -12,7 +12,7 @@ output "vm_public_ips" {
   value = {
     redhat               = azurerm_public_ip.vms["redhat"].ip_address
 #    suse                 = azurerm_public_ip.vms["suse"].ip_address
-    ubuntu               = azurerm_public_ip.vms["ubuntu"].ip_address
+#    ubuntu               = azurerm_public_ip.vms["ubuntu"].ip_address
   }
 }
 

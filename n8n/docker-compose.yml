@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  n8n:
+    image: 'n8nio/n8n' # A imagem oficial do n8n no Docker Hub
+    restart: unless-stopped # Garante que o contêiner reinicie se parar inesperadamente
+    ports:
+      - '5678:5678' # A porta padrão do n8n para acesso via navegador
+    volumes:
+      # Volume para persistir os dados do n8n (workflows, credenciais, etc.)
+      - /opt/n8n/data:/home/node/.n8n
+    environment:
+      # Variáveis de ambiente comuns para o n8n
+      #- N8N_HOST=${SUBDOMAIN}.${DOMAIN} # Exemplo para configurar o host se usar domínio
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http # ou https se usar proxy reverso com SSL
+      - NODE_ENV=production # Ambiente de produção
+      - N8N_SECURE_COOKIE=false
+      # Defina suas credenciais de login iniciais (ALTAMENTE RECOMENDADO!)
+      # - N8N_BASIC_AUTH_ACTIVE=true
+      # - N8N_BASIC_AUTH_USER=${N8N_USER}
+      # - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD}
+      # Outras configurações importantes como fuso horário
+      # - TZ=America/Sao_Paulo # Exemplo de fuso horário
