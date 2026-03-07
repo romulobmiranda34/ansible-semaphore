@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Atualizações de Servidores</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .timestamp {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-bottom: 30px;
+        }
+        .server-block {
+            margin-bottom: 30px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .server-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+        }
+        .server-header h2 {
+            margin: 0;
+            font-size: 1.3em;
+        }
+        .server-info {
+            padding: 15px 20px;
+            background-color: #f8f9fa;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #555;
+            font-size: 0.85em;
+            text-transform: uppercase;
+        }
+        .info-value {
+            color: #2c3e50;
+            font-size: 1em;
+        }
+        .packages-section {
+            padding: 20px;
+        }
+        .packages-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        .package-list {
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+        .status-updated {
+            background-color: #2ecc71;
+            color: white;
+        }
+        .status-no-updates {
+            background-color: #95a5a6;
+            color: white;
+        }
+        .summary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 30px;
+        }
+        .summary h3 {
+            margin-top: 0;
+        }
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+        }
+        .stat-label {
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Relatório de Atualizações de Servidores</h1>
+        <div class="timestamp">
+            Gerado em: 13/01/2026 às 23:06:30
+        </div>
+        
+        <div class="summary">
+            <h3>📈 Resumo Executivo</h3>
+            <div class="summary-stats">
+                <div class="stat-card">
+                    <div class="stat-number">3</div>
+                    <div class="stat-label">Servidores Processados</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">2</div>
+                    <div class="stat-label">Servidores Atualizados</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">1</div>
+                    <div class="stat-label">Sem Atualizações</div>
+                </div>
+            </div>
+        </div>
+
+                <div class="server-block">
+            <div class="server-header">
+                <h2>🖥️ vm-ubuntu-lab (vm-ubuntu-lab.internal.cloudapp.net)</h2>
+            </div>
+            
+            <div class="server-info">
+                <div class="info-item">
+                    <span class="info-label">Sistema Operacional</span>
+                    <span class="info-value">Ubuntu 24.04</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Hostname</span>
+                    <span class="info-value">vm-ubuntu-lab</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">FQDN</span>
+                    <span class="info-value">vm-ubuntu-lab.internal.cloudapp.net</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Status</span>
+                    <span class="status-badge status-updated">
+                        ✅ Atualizado                    </span>
+                </div>
+            </div>
+            
+            <div class="packages-section">
+                <div class="packages-title">📦 Pacotes Processados:</div>
+                <div class="package-list">Nenhum pacote disponível para atualização.</div>
+            </div>
+        </div>
+                <div class="server-block">
+            <div class="server-header">
+                <h2>🖥️ vm-redhat-lab (vm-redhat-lab.internal.cloudapp.net)</h2>
+            </div>
+            
+            <div class="server-info">
+                <div class="info-item">
+                    <span class="info-label">Sistema Operacional</span>
+                    <span class="info-value">RedHat 9.7</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Hostname</span>
+                    <span class="info-value">vm-redhat-lab</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">FQDN</span>
+                    <span class="info-value">vm-redhat-lab.internal.cloudapp.net</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Status</span>
+                    <span class="status-badge status-no-updates">
+                        ℹ️ Sem atualizações                    </span>
+                </div>
+            </div>
+            
+            <div class="packages-section">
+                <div class="packages-title">📦 Pacotes Processados:</div>
+                <div class="package-list">Updating Subscription Management repositories.\nUnable to read consumer identity\n\nThis system is not registered with an entitlement server. You can use "rhc" or "subscription-manager" to register.\n\nLast metadata expiration check: 0:00:03 ago on Tue 13 Jan 2026 11:06:23 PM UTC.\nSecurity: kernel-core-5.14.0-611.20.1.el9_7.x86_64 is an installed security update\nSecurity: kernel-core-5.14.0-611.5.1.el9_7.x86_64 is the currently running version</div>
+            </div>
+        </div>
+                <div class="server-block">
+            <div class="server-header">
+                <h2>🖥️ vm-suse-lab (vm-suse-lab.internal.cloudapp.net)</h2>
+            </div>
+            
+            <div class="server-info">
+                <div class="info-item">
+                    <span class="info-label">Sistema Operacional</span>
+                    <span class="info-value">SLES 15.5</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Hostname</span>
+                    <span class="info-value">vm-suse-lab</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">FQDN</span>
+                    <span class="info-value">vm-suse-lab.internal.cloudapp.net</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Status</span>
+                    <span class="status-badge status-updated">
+                        ✅ Atualizado                    </span>
+                </div>
+            </div>
+            
+            <div class="packages-section">
+                <div class="packages-title">📦 Pacotes Processados:</div>
+                <div class="package-list">Refreshing service 'Basesystem_Module_x86_64'.\nRefreshing service 'Containers_Module_x86_64'.\nRefreshing service 'Desktop_Applications_Module_x86_64'.\nRefreshing service 'Development_Tools_Module_x86_64'.\nRefreshing service 'Public_Cloud_Module_x86_64'.\nRefreshing service 'Python_3_Module_x86_64'.\nRefreshing service 'SUSE_Linux_Enterprise_Server_x86_64'.\nRefreshing service 'Server_Applications_Module_x86_64'.\nRefreshing service 'Web_and_Scripting_Module_x86_64'.\nBuilding repository 'SLE-Module-Basesystem15-SP5-Pool' cache [....done]\nRetrieving repository 'SLE-Module-Basesystem15-SP5-Updates' metadata [............done]\nBuilding repository 'SLE-Module-Basesystem15-SP5-Updates' cache [....done]\nBuilding repository 'SLE-Module-Containers15-SP5-Pool' cache [....done]\nRetrieving repository 'SLE-Module-Containers15-SP5-Updates' metadata [............done]\nBuilding repository 'SLE-Module-Containers15-SP5-Updates' cache [....done]\nBuilding repository 'SLE-Module-Desktop-Applications15-SP5-Pool' cache [....done]\nRetrieving repository 'SLE-Module-Desktop-Applications15-SP5-Updates' metadata [............done]\nBuilding repository 'SLE-Module-Desktop-Applications15-SP5-Updates' cache [....done]\nBuilding repository 'SLE-Module-DevTools15-SP5-Pool' cache [....done]\nRetrieving repository 'SLE-Module-DevTools15-SP5-Updates' metadata [.............done]\nBuilding repository 'SLE-Module-DevTools15-SP5-Updates' cache [....done]\nBuilding repository 'SLE-Module-Public-Cloud15-SP5-Pool' cache [....done]\nRetrieving repository 'SLE-Module-Public-Cloud15-SP5-Updates' metadata [............done]\nBuilding repository 'SLE-Module-Public-Cloud15-SP5-Updates' cache [....done]\nBuilding repository 'SLE-Module-Python3-15-SP5-Pool' cache [....done]\nRetrieving repository 'SLE-Module-Python3-15-SP5-Updates' metadata [............done]\nBuilding repository 'SLE-Module-Python3-15-SP5-Updates' cache [....done]\nBuilding repository 'SLE-Product-SLES15-SP5-Pool' cache [....done]\nRetrieving repository 'SLE-Product-SLES15-SP5-Updates' metadata [............done]\nBuilding repository 'SLE-Product-SLES15-SP5-Updates' cache [....done]\nBuilding repository 'SLE-Module-Server-Applications15-SP5-Pool' cache [....done]\nRetrieving repository 'SLE-Module-Server-Applications15-SP5-Updates' metadata [............done]\nBuilding repository 'SLE-Module-Server-Applications15-SP5-Updates' cache [....done]\nBuilding repository 'SLE-Module-Web-Scripting15-SP5-Pool' cache [....done]\nRetrieving repository 'SLE-Module-Web-Scripting15-SP5-Updates' metadata [............done]\nBuilding repository 'SLE-Module-Web-Scripting15-SP5-Updates' cache [....done]\nLoading repository data...\nReading installed packages...\nS  | Repository                            | Name                             | Current Version        | Available Version      | Arch\n---+---------------------------------------+----------------------------------+------------------------+------------------------+-------\nv  | SLE-Module-Public-Cloud15-SP5-Updates | python-azure-agent               | 2.12.0.4-150100.3.50.1 | 2.14.0.1-150100.3.53.1 | noarch\nv  | SLE-Module-Public-Cloud15-SP5-Updates | python-azure-agent-config-server | 2.12.0.4-150100.3.50.1 | 2.14.0.1-150100.3.53.1 | noarch\nv  | SLE-Module-Public-Cloud15-SP5-Updates | python311-xmltodict              | 0.13.0-150400.12.7.1   | 0.13.0-150400.12.10.2  | noarch</div>
+            </div>
+        </div>
+            </div>
+</body>
+</html>

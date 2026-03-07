@@ -1,0 +1,494 @@
+---
+- name: Atualizar máquinas Ubuntu, RedHat e Suse com Evidências
+  hosts: all
+  become: yes
+  vars:
+    backup_enabled: true
+    reboot_after_update: true
+    reboot_timeout: 600
+
+  pre_tasks:
+    - name: Definir caminho de evidências
+      set_fact:
+        evidence_dir: "/var/log/ansible_updates"
+
+    - name: Exibir informações do sistema
+      debug:
+        msg: "Atualizando   em "
+
+    - name: Criar diretório de evidências
+      file:
+        path: ""
+        state: directory
+        mode: '0755'
+
+    - name: Registrar versão do kernel antes da atualização
+      shell: uname -r
+      register: kernel_version_before
+      changed_when: false
+
+    - name: Registrar data/hora de início
+      shell: date '+%Y-%m-%d %H:%M:%S'
+      register: update_start_time
+      changed_when: false
+
+    - name: Coletar pacotes instalados ANTES da atualização (Ubuntu/Debian)
+      shell: dpkg -l | grep '^ii' > /_packages_before_debian.txt 2>&1 || true
+      when: ansible_os_family == "Debian"
+      changed_when: false
+
+    - name: Coletar pacotes instalados ANTES da atualização (RedHat)
+      shell: rpm -qa | sort > /_packages_before_redhat.txt
+      when: ansible_os_family == "RedHat"
+      changed_when: false
+
+    - name: Coletar pacotes instalados ANTES da atualização (Suse)
+      shell: rpm -qa | sort > /_packages_before_suse.txt
+      when: ansible_os_family == "Suse"
+      changed_when: false
+
+    - name: Criar backup de configurações importantes
+      block:
+        - name: Backup de /etc
+          shell: tar -czf /tmp/etc_backup_.tar.gz /etc/
+          when: backup_enabled
+
+        - name: Copiar backup para máquina local
+          fetch:
+            src: "/tmp/etc_backup_.tar.gz"
+            dest: "/tmp/backups//"
+            flat: yes
+          when: backup_enabled
+      rescue:
+        - name: Avisar sobre falha no backup
+          debug:
+            msg: "Aviso: Falha ao criar backup em "
+
+  tasks:
+    - name: Atualizar Ubuntu/Debian
+      block:
+        - name: Atualizar cache de pacotes
+          apt:
+            update_cache: yes
+            cache_valid_time: 3600
+
+        - name: Executar apt upgrade e registrar output
+          shell: apt full-upgrade -y 2>&1 | tee /_upgrade_output_debian.log
+          register: apt_upgrade_output
+
+        - name: Executar apt autoclean e autoremove
+          apt:
+            autoclean: yes
+            autoremove: yes
+
+        - name: Contar pacotes atualizados Ubuntu/Debian
+          shell: |
+            TOTAL_ANTES=$(wc -l < /_packages_before_debian.txt 2>/dev/null || echo "0")
+            echo $((TOTAL_ANTES)) > /_count_before_debian.txt
+          changed_when: false
+
+        - name: Listar pacotes atualizados no Ubuntu/Debian
+          shell: |
+            echo "=== PACOTES ATUALIZADOS EM  ===" > /_updated_packages_debian.txt
+            echo "Data/Hora: $(date '+%Y-%m-%d %H:%M:%S')" >> /_updated_packages_debian.txt
+            echo "Distribuição:  " >> /_updated_packages_debian.txt
+            echo "Total de pacotes instalados: $(dpkg -l | grep -c '^ii')" >> /_updated_packages_debian.txt
+            echo "" >> /_updated_packages_debian.txt
+            echo "=== LISTA DE PACOTES INSTALADOS ===" >> /_updated_packages_debian.txt
+            dpkg -l | grep '^ii' >> /_updated_packages_debian.txt
+          changed_when: false
+
+        - name: Gerar relatório de atualização Ubuntu/Debian
+          shell: |
+            cat > /_update_report_debian.txt << 'REPORT'
+            ╔════════════════════════════════════════════════════════════════════════════════╗
+            ║                    RELATÓRIO DE ATUALIZAÇÃO - UBUNTU/DEBIAN                    ║
+            ╚════════════════════════════════════════════════════════════════════════════════╝
+
+            HOST: 
+            DISTRIBUIÇÃO:  
+            DATA DE INÍCIO: 
+            DATA/HORA ATUAL: $(date '+%Y-%m-%d %H:%M:%S')
+
+            ═══════════════════════════════════════════════════════════════════════════════
+            INFORMAÇÕES KERNEL
+            ═══════════════════════════════════════════════════════════════════════════════
+            Kernel PRÉ-ATUALIZAÇÃO: 
+            Kernel PÓS-ATUALIZAÇÃO: $(uname -r)
+
+            ═══════════════════════════════════════════════════════════════════════════════
+            RESUMO DE PACOTES
+            ═══════════════════════════════════════════════════════════════════════════════
+            Total de pacotes instalados: $(dpkg -l | grep -c '^ii')
+
+            ═══════════════════════════════════════════════════════════════════════════════
+            UPGRADÁVEIS FINAIS
+            ═══════════════════════════════════════════════════════════════════════════════
+            $(apt list --upgradable 2>/dev/null | wc -l) pacotes disponíveis para atualização
+
+            ═══════════════════════════════════════════════════════════════════════════════
+            INFORMAÇÕES DO SISTEMA
+            ═══════════════════════════════════════════════════════════════════════════════
+            Uptime: $(uptime)
+
+            Espaço em disco:
+            $(df -h | head -5)
+
+            Memória:
+            $(free -h | head -2)
+
+            ═══════════════════════════════════════════════════════════════════════════════
+            RELATÓRIO COMPLETO
+            ═══════════════════════════════════════════════════════════════════════════════
+            REPORT
+          changed_when: false
+      when: ansible_os_family == "Debian"
+
+    - name: Atualizar RedHat/CentOS/Fedora
+      block:
+        - name: Executar yum update e registrar output
+          shell: |
+            {% if ansible_distribution == "Fedora" %}
+            dnf update -y 2>&1 | tee /_upgrade_output_redhat.log
+            {% else %}
+            yum update -y 2>&1 | tee /_upgrade_output_redhat.log
+            {% endif %}
+          register: yum_upgrade_output
+
+        - name: Remover pacotes não utilizados
+          shell: |
+            yum autoremove -y 2>/dev/null || yum remove -y autoremove 2>/dev/null || true
+          changed_when: false
+
+        - name: Limpar cache yum
+          shell: yum clean all
+          changed_when: false
+
+        - name: Contar pacotes atualizados RedHat
+          shell: |
+            TOTAL_ANTES=$(wc -l < /_packages_before_redhat.txt 2>/dev/null || echo "0")
+            echo $((TOTAL_ANTES)) > /_count_before_redhat.txt
+          changed_when: false
+
+        - name: Listar pacotes atualizados no RedHat/CentOS
+          shell: |
+            echo "=== PACOTES ATUALIZADOS EM  ===" > /_updated_packages_redhat.txt
+            echo "Data/Hora: $(date '+%Y-%m-%d %H:%M:%S')" >> /_updated_packages_redhat.txt
+            echo "Distribuição:  " >> /_updated_packages_redhat.txt
+            echo "Total de pacotes instalados: $(rpm -qa | wc -l)" >> /_updated_packages_redhat.txt
+            echo "" >> /_updated_packages_redhat.txt
+            echo "=== LISTA COMPLETA DE PACOTES INSTALADOS ===" >> /_updated_packages_redhat.txt
+            rpm -qa | sort >> /_updated_packages_redhat.txt
+          changed_when: false
+
+        - name: Gerar relatório de atualização RedHat/CentOS
+          shell: |
+            cat > /_update_report_redhat.txt << 'REPORT'
+            ╔════════════════════════════════════════════════════════════════════════════════╗
+            ║                  RELATÓRIO DE ATUALIZAÇÃO - REDHAT/CENTOS                      ║
+            ╚════════════════════════════════════════════════════════════════════════════════╝
+
+            HOST: 
+            DISTRIBUIÇÃO:  
+            DATA DE INÍCIO: 
+            DATA/HORA ATUAL: $(date '+%Y-%m-%d %H:%M:%S')
+
+            ═══════════════════════════════════════════════════════════════════════════════
+            INFORMAÇÕES KERNEL
+            ═══════════════════════════════════════════════════════════════════════════════
+            Kernel PRÉ-ATUALIZAÇÃO: 
+            Kernel PÓS-ATUALIZAÇÃO: $(uname -r)
+
+            ═══════════════════════════════════════════════════════════════════════════════
+            RESUMO DE PACOTES
+            ═══════════════════════════════════════════════════════════════════════════════
+            Total de pacotes instalados: $(rpm -qa | wc -l)
+
+            ═══════════════════════════════════════════════════════════════════════════════
+            VERIFICAÇÃO DE ATUALIZAÇÕES PENDENTES
+            ═══════════════════════════════════════════════════════════════════════════════
+            {% if ansible_distribution == "Fedora" %}
+            $(dnf check-update 2>/dev/null | tail -1 || echo "Nenhuma atualização pendente")
+            {% else %}
+            $(yum check-update 2>/dev/null | tail -1 || echo "Nenhuma atualização pendente")
+            {% endif %}
+
+            ═══════════════════════════════════════════════════════════════════════════════
+            INFORMAÇÕES DO SISTEMA
+            ═══════════════════════════════════════════════════════════════════════════════
+            Uptime: $(uptime)
+
+            Espaço em disco:
+            $(df -h | head -5)
+
+            Memória:
+            $(free -h | head -2)
+
+            ═══════════════════════════════════════════════════════════════════════════════
+            RELATÓRIO COMPLETO
+            ═══════════════════════════════════════════════════════════════════════════════
+            REPORT
+          changed_when: false
+      when: ansible_os_family == "RedHat"
+
+    - name: Atualizar Suse/OpenSUSE
+      block:
+        - name: Atualizar repositórios Zypper
+          shell: zypper refresh 2>&1 | tee /_refresh_output_suse.log
+          changed_when: false
+
+        - name: Executar zypper update e registrar output
+          shell: zypper update -y 2>&1 | tee /_upgrade_output_suse.log
+          register: zypper_upgrade_output
+
+        - name: Remover pacotes órfãos (não utilizados)
+          shell: zypper remove-orphaned -y 2>&1 | tee -a /_upgrade_output_suse.log
+          changed_when: false
+          ignore_errors: yes
+
+        - name: Limpar cache zypper
+          shell: rm -rf /var/cache/zypp/*
+          changed_when: false
+          ignore_errors: yes
+
+        - name: Contar pacotes atualizados Suse
+          shell: |
+            TOTAL_ANTES=$(wc -l < /_packages_before_suse.txt 2>/dev/null || echo "0")
+            echo $((TOTAL_ANTES)) > /_count_before_suse.txt
+          changed_when: false
+
+        - name: Listar pacotes atualizados no Suse
+          shell: |
+            echo "=== PACOTES ATUALIZADOS EM  ===" > /_updated_packages_suse.txt
+            echo "Data/Hora: $(date '+%Y-%m-%d %H:%M:%S')" >> /_updated_packages_suse.txt
+            echo "Distribuição:  " >> /_updated_packages_suse.txt
+            echo "Total de pacotes instalados: $(rpm -qa | wc -l)" >> /_updated_packages_suse.txt
+            echo "" >> /_updated_packages_suse.txt
+            echo "=== LISTA COMPLETA DE PACOTES INSTALADOS ===" >> /_updated_packages_suse.txt
+            rpm -qa | sort >> /_updated_packages_suse.txt
+          changed_when: false
+
+        - name: Gerar relatório de atualização Suse
+          shell: |
+            cat > /_update_report_suse.txt << 'REPORT'
+            ╔════════════════════════════════════════════════════════════════════════════════╗
+            ║                      RELATÓRIO DE ATUALIZAÇÃO - SUSE                           ║
+            ╚════════════════════════════════════════════════════════════════════════════════╝
+
+            HOST: 
+            DISTRIBUIÇÃO:  
+            DATA DE INÍCIO: 
+            DATA/HORA ATUAL: $(date '+%Y-%m-%d %H:%M:%S')
+
+            ═══════════════════════════════════════════════════════════════════════════════
+            INFORMAÇÕES KERNEL
+            ═══════════════════════════════════════════════════════════════════════════════
+            Kernel PRÉ-ATUALIZAÇÃO: 
+            Kernel PÓS-ATUALIZAÇÃO: $(uname -r)
+
+            ═══════════════════════════════════════════════════════════════════════════════
+            RESUMO DE PACOTES
+            ═══════════════════════════════════════════════════════════════════════════════
+            Total de pacotes instalados: $(rpm -qa | wc -l)
+
+            ═══════════════════════════════════════════════════════════════════════════════
+            PATCHES DISPONÍVEIS
+            ═══════════════════════════════════════════════════════════════════════════════
+            $(zypper list-patches 2>/dev/null | tail -5 || echo "Nenhum patch disponível")
+
+            ═══════════════════════════════════════════════════════════════════════════════
+            INFORMAÇÕES DO SISTEMA
+            ═══════════════════════════════════════════════════════════════════════════════
+            Uptime: $(uptime)
+
+            Espaço em disco:
+            $(df -h | head -5)
+
+            Memória:
+            $(free -h | head -2)
+
+            ═══════════════════════════════════════════════════════════════════════════════
+            RELATÓRIO COMPLETO
+            ═══════════════════════════════════════════════════════════════════════════════
+            REPORT
+          changed_when: false
+      when: ansible_os_family == "Suse"
+
+    - name: Verificar se reinicialização é necessária
+      stat:
+        path: /run/reboot-required
+      register: reboot_required_file
+      changed_when: false
+
+    - name: Agendar reinicialização se necessária
+      block:
+        - name: Avisar sobre reinicialização
+          debug:
+            msg: "Reinicialização necessária em "
+
+        - name: Registrar reinicialização necessária nas evidências
+          shell: echo "Reinicialização realizada em $(date '+%Y-%m-%d %H:%M:%S')" >> /_reboot_log.txt
+          changed_when: false
+
+        - name: Reiniciar máquina
+          reboot:
+            msg: "Reinicializando para aplicar atualizações do sistema..."
+            reboot_timeout: ""
+            pre_reboot_delay: 10
+            post_reboot_delay: 30
+      when: 
+        - reboot_after_update
+        - reboot_required_file.stat.exists or ansible_os_family == "RedHat"
+
+  post_tasks:
+    - name: Verificar saúde do sistema após atualização
+      block:
+        - name: Verificar status do sistema
+          shell: |
+            echo "=== Informações do Sistema ===" 
+            uname -a
+            echo "=== Uptime ===" 
+            uptime
+            echo "=== Espaço em disco ===" 
+            df -h
+          register: system_info
+          changed_when: false
+
+        - name: Exibir informações do sistema
+          debug:
+            var: system_info.stdout_lines
+
+        - name: Registrar atualização em log central
+          shell: |
+            echo " - Atualização concluída em " >> /var/log/ansible_updates.log
+          changed_when: false
+      ignore_errors: yes
+
+    - name: Compilar relatório final de evidências
+      block:
+        - name: Criar sumário executivo
+          shell: |
+            cat > /_SUMARIO_EXECUTIVO.txt << 'EOF'
+            ╔════════════════════════════════════════════════════════════════════════════════╗
+            ║                    RELATÓRIO DE ATUALIZAÇÃO DO SISTEMA                         ║
+            ║                         SUMÁRIO EXECUTIVO                                      ║
+            ╚════════════════════════════════════════════════════════════════════════════════╝
+
+            HOST: 
+            DATA DA EXECUÇÃO: 
+            DISTRIBUIÇÃO:  
+
+            ═══════════════════════════════════════════════════════════════════════════════
+            INFORMAÇÕES PRÉ-ATUALIZAÇÃO
+            ═══════════════════════════════════════════════════════════════════════════════
+            Kernel: 
+            Hora de início: 
+
+            ═══════════════════════════════════════════════════════════════════════════════
+            ARQUIVOS DE EVIDÊNCIA GERADOS
+            ═══════════════════════════════════════════════════════════════════════════════
+
+            📋 LOGS DE PROCESSAMENTO:
+               • _upgrade_output_*.log
+                 Saída completa do processo de atualização
+
+            📦 INVENTÁRIO DE PACOTES:
+               • _updated_packages_*.txt
+                 Lista de todos os pacotes instalados PÓS-atualização
+
+               • _packages_before_*.txt
+                 Snapshot dos pacotes instalados PRÉ-atualização
+
+            📊 RELATÓRIOS:
+               • _update_report_*.txt
+                 Relatório detalhado com informações do sistema
+
+               • _SUMARIO_EXECUTIVO.txt
+                 Este arquivo (sumário executivo)
+
+            📝 LOGS ADICIONAIS:
+               • _reboot_log.txt
+                 Registro de reinicializações realizadas
+
+            ═══════════════════════════════════════════════════════════════════════════════
+            COMO USAR ESSAS EVIDÊNCIAS
+            ═══════════════════════════════════════════════════════════════════════════════
+
+            1. COMPARAR PACOTES ANTES E DEPOIS:
+               diff /_packages_before_*.txt \
+                    /_updated_packages_*.txt
+
+            2. VERIFICAR LOG COMPLETO DE ATUALIZAÇÃO:
+               cat /_upgrade_output_*.log
+
+            3. REVISAR RELATÓRIO DETALHADO:
+               cat /_update_report_*.txt
+
+            4. CONTAR MUDANÇAS:
+               echo "Pacotes antes: $(wc -l < /_packages_before_*.txt)"
+               echo "Pacotes depois: $(wc -l < /_updated_packages_*.txt)"
+
+            ═══════════════════════════════════════════════════════════════════════════════
+            LOCAL DOS ARQUIVOS NO SERVIDOR
+            ═══════════════════════════════════════════════════════════════════════════════
+            /
+
+            ═══════════════════════════════════════════════════════════════════════════════
+            PRÓXIMOS PASSOS RECOMENDADOS
+            ═══════════════════════════════════════════════════════════════════════════════
+            ✓ Verificar logs de erro em /var/log/
+            ✓ Validar serviços críticos estão rodando
+            ✓ Testar conectividade e funcionalidade
+            ✓ Comparar pacotes antes/depois usando diff
+            ✓ Manter esses arquivos para auditoria/compliance
+
+            ═══════════════════════════════════════════════════════════════════════════════
+            FIM DO RELATÓRIO - 
+            ═══════════════════════════════════════════════════════════════════════════════
+            EOF
+          changed_when: false
+
+        - name: Listar todos os arquivos de evidência gerados
+          shell: ls -lh /_* 2>/dev/null
+          register: evidence_files
+          changed_when: false
+
+        - name: Exibir arquivos de evidência
+          debug:
+            msg:
+              - "════════════════════════════════════════════════════════════════"
+              - "✅ EVIDÊNCIAS GERADAS PARA "
+              - "════════════════════════════════════════════════════════════════"
+              - ""
+              - ""
+              - "📁 Local: /"
+              - "════════════════════════════════════════════════════════════════"
+      ignore_errors: yes
+
+    - name: Copiar evidências para máquina local
+      block:
+        - name: Buscar arquivos de evidência
+          find:
+            paths: ""
+            patterns: "_*"
+          register: evidence_local_files
+          changed_when: false
+
+        - name: Transferir evidências para máquina de controle
+          fetch:
+            src: ""
+            dest: "/tmp/update_evidence//"
+            flat: yes
+          loop: ""
+          changed_when: false
+      ignore_errors: yes
+
+  handlers:
+    - name: Reiniciar serviços críticos
+      systemd:
+        name: ""
+        state: restarted
+      loop:
+        - ssh
+        - rsyslog
+      ignore_errors: yes

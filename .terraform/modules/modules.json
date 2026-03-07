@@ -1,0 +1,1 @@
+{"Modules":[{"Key":"","Source":"","Dir":"."},{"Key":"ansible_server","Source":"./modules/ansible-server","Dir":"modules/ansible-server"},{"Key":"database","Source":"./modules/database","Dir":"modules/database"},{"Key":"network","Source":"./modules/network","Dir":"modules/network"},{"Key":"servidores_lab","Source":"./modules/servidores-lab","Dir":"modules/servidores-lab"}]}

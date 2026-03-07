@@ -1,0 +1,354 @@
+---
+- name: Update Servers
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  tasks:
+#-------------------------------------------------------------------------------------
+# SUSE
+#-------------------------------------------------------------------------------------
+    - name: List Updates SUSE Linux
+      ansible.builtin.shell: zypper list-updates
+      register: list_suse
+      changed_when: false
+      when: ansible_facts['distribution'] in ["SLES", "openSUSE Leap", "SLES_SAP"]
+
+    - name: Pacotes disponíveis para atualização SUSE
+      ansible.builtin.debug:
+        msg: "{{ list_suse.stdout_lines }}"
+      when: ansible_facts['distribution'] in ["SLES", "openSUSE Leap", "SLES_SAP"]
+
+    - name: Update packages SUSE
+      community.general.zypper:
+        name: '*'
+        state: latest
+      register: update_result_suse
+      when: ansible_facts['distribution'] in ["SLES", "openSUSE Leap", "SLES_SAP"]
+
+#-------------------------------------------------------------------------------------
+# Ubuntu/Debian
+#-------------------------------------------------------------------------------------
+    - name: Pacotes disponíveis para atualização Ubuntu/Debian
+      ansible.builtin.shell: apt list --upgradable 2>/dev/null | tail -n +2
+      register: list_ubuntu
+      changed_when: false
+      when: ansible_facts['distribution'] in ["Ubuntu", "Debian"]
+
+    - name: Listar Pacotes Ubuntu/Debian
+      ansible.builtin.debug:
+        msg: "{{ list_ubuntu.stdout_lines }}"
+      when: ansible_facts['distribution'] in ["Ubuntu", "Debian"]
+
+    - name: Aplicando atualizações Ubuntu/Debian
+      ansible.builtin.apt:
+        update_cache: yes
+        upgrade: dist
+        autoremove: yes
+      register: update_result_ubuntu
+      when: ansible_facts['distribution'] in ["Ubuntu", "Debian"]
+
+#-------------------------------------------------------------------------------------
+# RedHat/Oracle Linux
+#-------------------------------------------------------------------------------------
+    - name: Atualizar cache de pacotes RedHat
+      ansible.builtin.dnf:
+        update_cache: yes
+      when: ansible_facts['distribution'] in ["RedHat", "Red Hat Enterprise Linux", "OracleLinux"]
+
+    - name: Listar pacotes disponíveis RedHat
+      ansible.builtin.shell: |
+        if command -v dnf &> /dev/null; then
+          dnf check-update --security 2>/dev/null || true
+        else
+          yum check-update --security 2>/dev/null || true
+        fi
+      register: list_redhat
+      changed_when: false
+      when: ansible_facts['distribution'] in ["RedHat", "Red Hat Enterprise Linux", "OracleLinux"]
+
+    - name: Exibir lista de pacotes RedHat
+      ansible.builtin.debug:
+        msg: "{{ list_redhat.stdout_lines }}"
+      when: ansible_facts['distribution'] in ["RedHat", "Red Hat Enterprise Linux", "OracleLinux"]
+
+    - name: Aplicar atualizações RedHat
+      ansible.builtin.dnf:
+        security: yes
+        name: "*"
+        state: latest
+        allowerasing: yes
+      register: update_result_redhat
+      when: ansible_facts['distribution'] in ["RedHat", "Red Hat Enterprise Linux", "OracleLinux"]
+
+#-------------------------------------------------------------------------------------
+# Consolidar informações para o relatório
+#-------------------------------------------------------------------------------------
+    - name: Consolidar dados de atualização
+      ansible.builtin.set_fact:
+        update_info:
+          hostname: "{{ ansible_hostname }}"
+          fqdn: "{{ ansible_fqdn }}"
+          os_family: "{{ ansible_facts['distribution'] }}"
+          os_version: "{{ ansible_facts['distribution_version'] }}"
+          packages_before: >-
+            {%- if ansible_facts['distribution'] in ["SLES", "openSUSE Leap", "SLES_SAP"] -%}
+            {{ list_suse.stdout_lines | default([]) }}
+            {%- elif ansible_facts['distribution'] in ["Ubuntu", "Debian"] -%}
+            {{ list_ubuntu.stdout_lines | default([]) }}
+            {%- elif ansible_facts['distribution'] in ["RedHat", "Red Hat Enterprise Linux", "OracleLinux"] -%}
+            {{ list_redhat.stdout_lines | default([]) }}
+            {%- else -%}
+            []
+            {%- endif -%}
+          update_status: >-
+            {%- if ansible_facts['distribution'] in ["SLES", "openSUSE Leap", "SLES_SAP"] -%}
+            {{ update_result_suse.changed | default(false) }}
+            {%- elif ansible_facts['distribution'] in ["Ubuntu", "Debian"] -%}
+            {{ update_result_ubuntu.changed | default(false) }}
+            {%- elif ansible_facts['distribution'] in ["RedHat", "Red Hat Enterprise Linux", "OracleLinux"] -%}
+            {{ update_result_redhat.changed | default(false) }}
+            {%- else -%}
+            false
+            {%- endif -%}
+
+#-------------------------------------------------------------------------------------
+# Gerar relatório HTML
+#-------------------------------------------------------------------------------------
+- name: Generate HTML Report
+  hosts: localhost
+  gather_facts: yes
+  become: no
+
+  tasks:
+    - name: Obter timestamp atual
+      ansible.builtin.set_fact:
+        report_timestamp: "{{ lookup('pipe', 'date +%Y-%m-%d_%H-%M-%S') }}"
+        report_date: "{{ lookup('pipe', 'date \"+%d/%m/%Y às %H:%M:%S\"') }}"
+
+    - name: Coletar informações de todos os hosts
+      ansible.builtin.set_fact:
+        all_updates: "{{ all_updates | default([]) + [hostvars[item].update_info] }}"
+      loop: "{{ groups['all'] }}"
+      when: hostvars[item].update_info is defined
+
+    - name: Gerar relatório HTML
+      ansible.builtin.copy:
+        content: |
+          <!DOCTYPE html>
+          <html lang="pt-BR">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Relatório de Atualizações de Servidores</title>
+              <style>
+                  body {
+                      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                      margin: 0;
+                      padding: 20px;
+                      background-color: #f5f5f5;
+                  }
+                  .container {
+                      max-width: 1400px;
+                      margin: 0 auto;
+                      background-color: white;
+                      padding: 30px;
+                      border-radius: 8px;
+                      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                  }
+                  h1 {
+                      color: #2c3e50;
+                      border-bottom: 3px solid #3498db;
+                      padding-bottom: 10px;
+                  }
+                  .timestamp {
+                      color: #7f8c8d;
+                      font-size: 0.9em;
+                      margin-bottom: 30px;
+                  }
+                  .server-block {
+                      margin-bottom: 30px;
+                      border: 1px solid #e0e0e0;
+                      border-radius: 6px;
+                      overflow: hidden;
+                  }
+                  .server-header {
+                      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                      color: white;
+                      padding: 15px 20px;
+                  }
+                  .server-header h2 {
+                      margin: 0;
+                      font-size: 1.3em;
+                  }
+                  .server-info {
+                      padding: 15px 20px;
+                      background-color: #f8f9fa;
+                      display: grid;
+                      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                      gap: 10px;
+                  }
+                  .info-item {
+                      display: flex;
+                      flex-direction: column;
+                  }
+                  .info-label {
+                      font-weight: bold;
+                      color: #555;
+                      font-size: 0.85em;
+                      text-transform: uppercase;
+                  }
+                  .info-value {
+                      color: #2c3e50;
+                      font-size: 1em;
+                  }
+                  .packages-section {
+                      padding: 20px;
+                  }
+                  .packages-title {
+                      font-weight: bold;
+                      color: #2c3e50;
+                      margin-bottom: 10px;
+                      font-size: 1.1em;
+                  }
+                  .package-list {
+                      background-color: #f8f9fa;
+                      border-left: 4px solid #3498db;
+                      padding: 15px;
+                      font-family: 'Courier New', monospace;
+                      font-size: 0.9em;
+                      white-space: pre-wrap;
+                      overflow-x: auto;
+                      max-height: 400px;
+                      overflow-y: auto;
+                  }
+                  .status-badge {
+                      display: inline-block;
+                      padding: 5px 12px;
+                      border-radius: 12px;
+                      font-size: 0.85em;
+                      font-weight: bold;
+                  }
+                  .status-updated {
+                      background-color: #2ecc71;
+                      color: white;
+                  }
+                  .status-no-updates {
+                      background-color: #95a5a6;
+                      color: white;
+                  }
+                  .summary {
+                      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                      color: white;
+                      padding: 20px;
+                      border-radius: 6px;
+                      margin-bottom: 30px;
+                  }
+                  .summary h3 {
+                      margin-top: 0;
+                  }
+                  .summary-stats {
+                      display: grid;
+                      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                      gap: 15px;
+                      margin-top: 15px;
+                  }
+                  .stat-card {
+                      background: rgba(255,255,255,0.2);
+                      padding: 15px;
+                      border-radius: 6px;
+                      text-align: center;
+                  }
+                  .stat-number {
+                      font-size: 2em;
+                      font-weight: bold;
+                  }
+                  .stat-label {
+                      font-size: 0.9em;
+                      margin-top: 5px;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="container">
+                  <h1>📊 Relatório de Atualizações de Servidores</h1>
+                  <div class="timestamp">
+                      Gerado em: {{ report_date }}
+                  </div>
+                  
+                  <div class="summary">
+                      <h3>📈 Resumo Executivo</h3>
+                      <div class="summary-stats">
+                          <div class="stat-card">
+                              <div class="stat-number">{{ all_updates | length }}</div>
+                              <div class="stat-label">Servidores Processados</div>
+                          </div>
+                          <div class="stat-card">
+                              <div class="stat-number">{{ all_updates | selectattr('update_status', 'equalto', true) | list | length }}</div>
+                              <div class="stat-label">Servidores Atualizados</div>
+                          </div>
+                          <div class="stat-card">
+                              <div class="stat-number">{{ all_updates | rejectattr('update_status', 'equalto', true) | list | length }}</div>
+                              <div class="stat-label">Sem Atualizações</div>
+                          </div>
+                      </div>
+                  </div>
+
+                  {% for server in all_updates %}
+                  <div class="server-block">
+                      <div class="server-header">
+                          <h2>🖥️ {{ server.hostname }} ({{ server.fqdn }})</h2>
+                      </div>
+                      
+                      <div class="server-info">
+                          <div class="info-item">
+                              <span class="info-label">Sistema Operacional</span>
+                              <span class="info-value">{{ server.os_family }} {{ server.os_version }}</span>
+                          </div>
+                          <div class="info-item">
+                              <span class="info-label">Hostname</span>
+                              <span class="info-value">{{ server.hostname }}</span>
+                          </div>
+                          <div class="info-item">
+                              <span class="info-label">FQDN</span>
+                              <span class="info-value">{{ server.fqdn }}</span>
+                          </div>
+                          <div class="info-item">
+                              <span class="info-label">Status</span>
+                              <span class="status-badge {% if server.update_status %}status-updated{% else %}status-no-updates{% endif %}">
+                                  {% if server.update_status %}✅ Atualizado{% else %}ℹ️ Sem atualizações{% endif %}
+                              </span>
+                          </div>
+                      </div>
+                      
+                      <div class="packages-section">
+                          <div class="packages-title">📦 Pacotes Processados:</div>
+                          <div class="package-list">{% if server.packages_before | length > 0 %}{{ server.packages_before | join('\n') }}{% else %}Nenhum pacote disponível para atualização.{% endif %}</div>
+                      </div>
+                  </div>
+                  {% endfor %}
+              </div>
+          </body>
+          </html>
+        dest: "/tmp/update_report_{{ report_timestamp }}.html"
+      when: all_updates is defined and all_updates | length > 0
+
+    - name: Exibir localização do relatório
+      ansible.builtin.debug:
+        msg: |
+          ═══════════════════════════════════════════════════════════════
+          ✅ RELATÓRIO HTML GERADO COM SUCESSO!
+          ═══════════════════════════════════════════════════════════════
+          
+          📁 Localização: /tmp/update_report_{{ report_timestamp }}.html
+          
+          📊 Resumo:
+             • Total de servidores: {{ all_updates | length }}
+             • Servidores atualizados: {{ all_updates | selectattr('update_status', 'equalto', true) | list | length }}
+             • Sem atualizações: {{ all_updates | rejectattr('update_status', 'equalto', true) | list | length }}
+          
+          🌐 Para visualizar, abra o arquivo em seu navegador:
+             firefox /tmp/update_report_{{ report_timestamp }}.html
+          
+          ═══════════════════════════════════════════════════════════════
+      when: all_updates is defined and all_updates | length > 0
