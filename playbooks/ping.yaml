@@ -1,0 +1,19 @@
+---
+- name: Testar Ping em Máquina Ubuntu
+  hosts: all
+  gather_facts: no
+
+  tasks:
+    - name: Executar ping
+      ping:
+      register: ping_result
+
+    - name: Exibir resultado do ping
+      debug:
+        msg: "Ping executado com sucesso em {{ inventory_hostname }}"
+      when: ping_result is succeeded
+
+    - name: Falha ao executar ping
+      debug:
+        msg: "Erro ao fazer ping em {{ inventory_hostname }}: {{ ping_result.msg }}"
+      when: ping_result is failed
