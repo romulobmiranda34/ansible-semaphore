@@ -1,19 +1,30 @@
 ---
 - name: Testar Ping em Máquina Ubuntu
-  hosts: all
+  hosts: "{{ TARGET_HOST | default('all') }}"
   gather_facts: no
 
   tasks:
+    - name: "0. DEBUG - Variáveis Recebidas"
+      debug:
+        msg:
+          - "TARGET_HOST.....: {{ TARGET_HOST | default('NÃO RECEBIDO') }}"
+          - "ZABBIX_EVENT_ID.: {{ ZABBIX_EVENT_ID | default('NÃO RECEBIDO') }}"
+
     - name: Executar ping
       ping:
       register: ping_result
 
     - name: Exibir resultado do ping
       debug:
-        msg: "Ping executado com sucesso em {{ inventory_hostname }}"
+        msg: "✅ Ping executado com sucesso em {{ inventory_hostname }}"
       when: ping_result is succeeded
 
     - name: Falha ao executar ping
       debug:
-        msg: "Erro ao fazer ping em {{ inventory_hostname }}: {{ ping_result.msg }}"
+        msg: "❌ Erro ao fazer ping em {{ inventory_hostname }}"
       when: ping_result is failed
+
+
+curl -X GET http://localhost:3000/api/project/1/templates \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Accept: application/json"
