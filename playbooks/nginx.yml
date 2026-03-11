@@ -1,0 +1,33 @@
+---
+- name: Restart Service Simulation
+  hosts: all
+  gather_facts: yes
+  
+  tasks:
+    - name: Display system info
+      debug:
+        msg: "Starting service recovery on {{ inventory_hostname }} ({{ ansible_host }})"
+    
+    - name: Check if service is running (nginx example)
+      shell: "systemctl is-active nginx || echo 'Service is down'"
+      register: service_status
+      ignore_errors: yes
+    
+    - name: Restart nginx service
+      systemd:
+        name: nginx
+        state: restarted
+      when: inventory_hostname == 'redhat'
+      become: yes
+      ignore_errors: yes
+    
+    - name: Verify service is running
+      shell: "systemctl is-active nginx"
+      register: verify_status
+      retries: 3
+      delay: 2
+      until: verify_status.rc == 0
+    
+    - name: Report success
+      debug:
+        msg: "Service {{ service_name | default('nginx') }} successfully restarted on {{ inventory_hostname }}"
