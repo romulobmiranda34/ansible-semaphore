@@ -1,0 +1,51 @@
+---
+- name: Relatório de Uso de Disco
+  hosts: "{{ target_host | default('all') }}"
+  gather_facts: false
+  vars:
+    scan_path: "{{ path | default('/') }}"
+    top_n: "{{ top_dirs | default(20) }}"
+
+  tasks:
+    - name: Coletar uso de disco geral
+      ansible.builtin.shell: df -h "{{ scan_path }}" | tail -1
+      register: disk_info
+      changed_when: false
+
+    - name: Listar top diretórios por tamanho (nível 1)
+      ansible.builtin.shell: >
+        du -sh {{ scan_path }}/* 2>/dev/null |
+        sort -rh |
+        head -n {{ top_n }}
+      register: top_dirs_output
+      changed_when: false
+
+    - name: Listar top diretórios nível 2 (mais profundo)
+      ansible.builtin.shell: >
+        du -sh {{ scan_path }}/*/* 2>/dev/null |
+        sort -rh |
+        head -n {{ top_n }}
+      register: top_dirs_deep
+      changed_when: false
+
+    - name: Listar arquivos grandes (> 100MB)
+      ansible.builtin.shell: >
+        find {{ scan_path }} -type f -size +100M 2>/dev/null |
+        xargs du -sh 2>/dev/null |
+        sort -rh |
+        head -n 20
+      register: large_files
+      changed_when: false
+
+    - name: Consolidar resultado
+      ansible.builtin.set_fact:
+        disk_report:
+          host: "{{ inventory_hostname }}"
+          disk_usage: "{{ disk_info.stdout }}"
+          top_directories: "{{ top_dirs_output.stdout }}"
+          top_directories_deep: "{{ top_dirs_deep.stdout }}"
+          large_files: "{{ large_files.stdout }}"
+
+    - name: Exibir relatório
+      ansible.builtin.debug:
+        var: disk_report
